@@ -21,14 +21,13 @@ body {
   background-size: 400% 400%;
   animation: gradientBG 15s ease infinite;
 }
-
 @keyframes gradientBG {
   0%{background-position:0% 50%;}
   50%{background-position:100% 50%;}
   100%{background-position:0% 50%;}
 }
 
-/* Stars */
+/* Star styles */
 #stars { 
   position: fixed;
   top:0; left:0;
@@ -43,7 +42,7 @@ body {
   background: white;
   border-radius: 50%;
   opacity: 0;
-  animation: twinkle 2s infinite ease-in-out, drift 10s linear infinite;
+  animation: twinkle 2s infinite ease-in-out, drift linear infinite;
 }
 @keyframes twinkle {
   0%,100%{opacity:0.2;}
@@ -51,9 +50,10 @@ body {
 }
 @keyframes drift {
   0% {transform: translateY(0);}
-  100% {transform: translateY(-100vh);}
+  100% {transform: translateY(-110vh);}
 }
 
+/* Game elements */
 #startScreen { text-align:center; margin-bottom:20px; z-index:10; }
 #countdown {
   font-size: 4em;
@@ -117,12 +117,23 @@ button:active{transform:scale(0.95);}
 <div id="confetti"></div>
 <div id="celebration-text">YOU DID IT!</div>
 
-<!-- Music & Sounds -->
 <audio id="beat" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop hidden></audio>
 <audio id="correctSound" src="https://freesound.org/data/previews/170/170664_2437358-lq.mp3" preload="auto"></audio>
 <audio id="celebrationSound" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3" preload="auto"></audio>
 
 <script>
+// Generate stars
+const starsContainer = document.getElementById('stars');
+for(let i=0;i<100;i++){
+  const star = document.createElement('div');
+  star.classList.add('star');
+  star.style.left = Math.random()*100 + "vw";
+  star.style.top = Math.random()*100 + "vh";
+  star.style.width = star.style.height = Math.random()*2+1 + "px";
+  star.style.animationDuration = (5 + Math.random()*5) + "s, " + (8 + Math.random()*10) + "s"; // twinkle, drift
+  starsContainer.appendChild(star);
+}
+
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const countdownEl = document.getElementById('countdown');
@@ -139,19 +150,6 @@ const celebrationText = document.getElementById('celebration-text');
 
 let num1,num2,correctAnswer,score=0,feedbackTimeout;
 const messages = ["Way to go!","Almost there!","Keep going!","You can do this, Ethan!"];
-
-// Generate floating stars
-const starsContainer = document.getElementById('stars');
-for(let i=0;i<100;i++){
-  const star = document.createElement('div');
-  star.classList.add('star');
-  star.style.left = Math.random()*100 + "vw";
-  star.style.top = Math.random()*100 + "vh";
-  star.style.animationDelay = Math.random()*5 + "s";
-  star.style.width = Math.random()*2+1+"px";
-  star.style.height = star.style.width;
-  starsContainer.appendChild(star);
-}
 
 function generateQuestion(){
   num1=Math.floor(Math.random()*12)+1;
