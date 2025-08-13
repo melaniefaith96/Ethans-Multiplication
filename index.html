@@ -122,16 +122,12 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
 }
 @keyframes flashText{0%{opacity:0}100%{opacity:1}}
 
-/* Fireworks Canvas */
-#fireworksCanvas {
-  position: fixed;
-  inset: 0;
-  z-index: 9998;
-  pointer-events: none;
-}
+/* FIREWORKS */
+.firework{ position:absolute; border-radius:50%; pointer-events:none; z-index:10000; }
 </style>
 </head>
 <body class="theme-space">
+<!-- THEME / CONTROLS -->
 <div id="uiTop" aria-label="Game controls">
   <div style="display:flex; gap:10px; align-items:center;">
     <button id="startBtn" aria-label="Start game">Start Game</button>
@@ -149,16 +145,13 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
 
 <canvas id="bgTable"></canvas>
 <div id="stars" aria-hidden="true"></div>
-
 <div id="startScreen">
   <div id="countdown" style="display:none;"></div>
 </div>
-
 <div class="question" id="question" style="display:none;" aria-live="polite"></div>
 <input type="number" id="answer" class="answer-input" placeholder="?" autofocus style="display:none;" aria-label="Type your answer and press Enter"/>
 <div class="feedback" id="feedback" aria-live="polite"></div>
 <div class="score" id="score" style="display:none;">Score: 0</div>
-
 <div id="streakWrap" aria-hidden="false" title="Answer streak">
   <div id="streakBar"></div>
   <div id="streakLabel">Streak: 0</div>
@@ -168,16 +161,11 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
 <div id="celebration-text">YOU DID IT!</div>
 
 <audio id="beat" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop hidden></audio>
-
 <audio class="correctSfx" src="https://freesound.org/data/previews/170/170664_2437358-lq.mp3" preload="auto"></audio>
 <audio class="correctSfx" src="https://freesound.org/data/previews/320/320655_5260873-lq.mp3" preload="auto"></audio>
 <audio class="correctSfx" src="https://freesound.org/data/previews/109/109662_945474-lq.mp3" preload="auto"></audio>
-
-<!-- New positive celebration tone -->
-<audio id="celebrationSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_3f6325e659.mp3?filename=success-fanfare-trumpets-6185.mp3" preload="auto"></audio>
-
-<!-- Fireworks canvas -->
-<canvas id="fireworksCanvas"></canvas>
+<audio id="celebrationSound" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3" preload="auto"></audio>
+<audio id="fanfare" src="https://freesound.org/data/previews/331/331913_3248245-lq.mp3" preload="auto"></audio>
 
 <script>
 /* ====== STARS ====== */
@@ -203,6 +191,7 @@ const feedbackEl = document.getElementById('feedback');
 const scoreEl = document.getElementById('score');
 const beat = document.getElementById('beat');
 const celebrationSound = document.getElementById('celebrationSound');
+const fanfare = document.getElementById('fanfare');
 const confettiContainer = document.getElementById('confetti');
 const celebrationText = document.getElementById('celebration-text');
 const themeSelect = document.getElementById('themeSelect');
@@ -229,7 +218,6 @@ const bg = document.getElementById('bgTable');
 const ctx = bg.getContext('2d');
 let W=bg.width=window.innerWidth, H=bg.height=window.innerHeight;
 window.addEventListener('resize', ()=>{ W=bg.width=window.innerWidth; H=bg.height=window.innerHeight; initFloaters(); });
-
 const floaters=[];
 function initFloaters(){
   floaters.length=0;
@@ -302,28 +290,108 @@ function celebrateConfetti(count=150){
   }
 }
 
-/* ====== FIREWORKS EFFECT ====== */
-const fwCanvas = document.getElementById("fireworksCanvas");
-const fwCtx = fwCanvas.getContext("2d");
-let fwW = fwCanvas.width = window.innerWidth;
-let fwH = fwCanvas.height = window.innerHeight;
-window.addEventListener("resize", () => {
-  fwW = fwCanvas.width = window.innerWidth;
-  fwH = fwCanvas.height = window.innerHeight;
-});
-const fireworks = [];
-function createFirework(x, y) {
-  const colors = ["#ff3", "#f0f", "#0ff", "#f33", "#3f3"];
-  for (let i = 0; i < 50; i++) {
-    fireworks.push({
-      x, y,
-      angle: Math.random() * Math.PI * 2,
-      speed: Math.random() * 4 + 2,
-      alpha: 1,
-      decay: Math.random() * 0.015 + 0.01,
-      color: colors[Math.floor(Math.random() * colors.length)]
-    });
+/* ====== FIREWORKS ====== */
+function launchFireworks(count=30){
+  for(let i=0;i<count;i++){
+    const fw=document.createElement('div');
+    fw.className='firework';
+    const size=2+Math.random()*6;
+    fw.style.width=fw.style.height=size+'px';
+    fw.style.background=`hsl(${Math.random()*360},80%,60%)`;
+    fw.style.left=50+Math.random()*20-10+'vw';
+    fw.style.top=50+Math.random()*20-10+'vh';
+    document.body.appendChild(fw);
+    const angle=Math.random()*Math.PI*2;
+    const speed=2+Math.random()*4;
+    let x=fw.offsetLeft, y=fw.offsetTop;
+    const anim=setInterval(()=>{
+      x+=Math.cos(angle)*speed;
+      y+=Math.sin(angle)*speed;
+      fw.style.left=x+'px';
+      fw.style.top=y+'px';
+    },16);
+    setTimeout(()=>{
+      clearInterval(anim);
+      fw.remove();
+    },1000+Math.random()*600);
   }
 }
-function updateFireworks() {
-  fwCtx.clearRect(0, 0, fw
+
+/* ====== GAME LOGIC ====== */
+function nextQuestion(){
+  num1=Math.floor(Math.random()*12)+1;
+  num2=Math.floor(Math.random()*12)+1;
+  correctAnswer=num1*num2;
+  questionEl.textContent=`${num1} × ${num2} = ?`;
+  answerEl.value=''; answerEl.focus();
+}
+function updateScore(){
+  scoreEl.textContent='Score: '+score;
+}
+function updateStreak(){
+  streakBar.style.width = Math.min(streak*2,100)+'%';
+  streakLabel.textContent = `Streak: ${streak}`;
+}
+
+function showFeedback(msg,type){
+  clearTimeout(feedbackTimeout);
+  feedbackEl.textContent = msg;
+  feedbackEl.className='feedback '+type+' pop-bounce';
+  feedbackTimeout=setTimeout(()=>{ feedbackEl.textContent=''; feedbackEl.className='feedback'; }, 1500);
+}
+
+function handleAnswer(){
+  const val=parseInt(answerEl.value);
+  if(isNaN(val)) return;
+  if(val===correctAnswer){
+    // correct
+    const msg = messages[Math.floor(Math.random()*messages.length)];
+    showFeedback(msg,'correct');
+    streak++; score++;
+    updateScore(); updateStreak();
+    // play sound
+    correctSfx[Math.floor(Math.random()*correctSfx.length)].play();
+    // firework every 10 streak
+    if(streak%10===0 && streak<50){
+      launchFireworks(20);
+    }
+    // celebration at 50
+    if(score===50){
+      streak=0; updateStreak();
+      celebrationText.style.display='block';
+      fanfare.play();
+      celebrateConfetti(200);
+      setTimeout(()=>celebrationText.style.display='none',3000);
+    }
+  }else{
+    showFeedback('Oops! Try again!','wrong');
+    streak=0; updateStreak();
+  }
+  nextQuestion();
+}
+
+/* ====== EVENTS ====== */
+answerEl.addEventListener('keydown', e=>{
+  if(e.key==='Enter') handleAnswer();
+});
+startBtn.addEventListener('click',()=>{
+  document.getElementById('startScreen').style.display='none';
+  questionEl.style.display='block';
+  answerEl.style.display='inline-block';
+  scoreEl.style.display='block';
+  beat.play();
+  countdownEl.style.display='block';
+  let c=3;
+  countdownEl.textContent=c;
+  const cdInt = setInterval(()=>{
+    c--; countdownEl.textContent=c>0?c:'GO!';
+    if(c<0){ clearInterval(cdInt); countdownEl.style.display='none'; nextQuestion(); }
+  },1000);
+});
+stopBtn.addEventListener('click',()=>beat.pause());
+
+/* ====== INITIALIZATION ====== */
+updateScore(); updateStreak();
+</script>
+</body>
+</html>
