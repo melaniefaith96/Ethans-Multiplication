@@ -52,7 +52,10 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
 .answer-input{
   padding:10px; font-size:1.6em; width:120px; text-align:center;
   border-radius:10px; border:none; outline:none; box-shadow:0 0 8px rgba(255 255 255 / .3); z-index:10;
+  -moz-appearance:textfield; /* remove Firefox arrows */
 }
+.answer-input::-webkit-inner-spin-button,
+.answer-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; } /* remove Chrome arrows */
 .answer-input:focus{ box-shadow:0 0 14px var(--accent); background:#d6eaff; color:#003366; font-weight:bold; }
 .feedback{
   margin-top:15px; font-size:1.5em; height:1.5em; min-height:1.5em; user-select:none; z-index:10;
@@ -77,7 +80,7 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
 @keyframes twinkle{ 0%,100%{opacity:.2} 50%{opacity:1}}
 @keyframes drift{ 0%{ transform: translateY(0)} 100%{ transform: translateY(-110vh)} }
 
-/* MULT TABLE CANVAS sits behind stars */
+/* MULT TABLE CANVAS */
 #bgTable{ position:fixed; inset:0; z-index:0; pointer-events:none; }
 
 /* CURSOR PARTICLE TRAILS */
@@ -124,16 +127,15 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
 </style>
 </head>
 <body class="theme-space">
-
-<!-- CONTROLS -->
-<div id="uiTop">
+<!-- UI Controls -->
+<div id="uiTop" aria-label="Game controls">
   <div style="display:flex; gap:10px; align-items:center;">
-    <button id="startBtn">Start Game</button>
-    <button id="stopBtn">Stop Music</button>
+    <button id="startBtn" aria-label="Start game">Start Game</button>
+    <button id="stopBtn" aria-label="Stop music">Stop Music</button>
   </div>
   <label>
     Theme:
-    <select id="themeSelect">
+    <select id="themeSelect" aria-label="Theme switcher">
       <option value="space">Space</option>
       <option value="underwater">Underwater</option>
       <option value="neon">Neon</option>
@@ -141,127 +143,128 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
   </label>
 </div>
 
+<!-- Background canvas -->
 <canvas id="bgTable"></canvas>
-<div id="stars"></div>
+<div id="stars" aria-hidden="true"></div>
+
+<!-- Game UI -->
 <div id="startScreen"><div id="countdown" style="display:none;"></div></div>
-<div class="question" id="question" style="display:none;"></div>
-<input type="number" id="answer" class="answer-input" placeholder="?" style="display:none;">
-<div class="feedback" id="feedback"></div>
+<div class="question" id="question" style="display:none;" aria-live="polite"></div>
+<input type="number" id="answer" class="answer-input" placeholder="?" autofocus style="display:none;" aria-label="Type your answer and press Enter"/>
+<div class="feedback" id="feedback" aria-live="polite"></div>
 <div class="score" id="score" style="display:none;">Score: 0</div>
-<div id="streakWrap"><div id="streakBar"></div><div id="streakLabel">Streak: 0</div></div>
-<div id="confetti"></div>
+
+<!-- Streak meter -->
+<div id="streakWrap" aria-hidden="false" title="Answer streak">
+  <div id="streakBar"></div>
+  <div id="streakLabel">Streak: 0</div>
+</div>
+
+<!-- Effects -->
+<div id="confetti" aria-hidden="true"></div>
 <div id="celebration-text">YOU DID IT!</div>
 
-<audio id="beat" src="audio/SoundHelix-Song-1.mp3" loop></audio>
-<audio id="celebrationSound" src="audio/celebration.mp3"></audio>
-<audio class="correctSfx" src="audio/correct1.mp3"></audio>
-<audio class="correctSfx" src="audio/correct2.mp3"></audio>
+<!-- Audio -->
+<audio id="beat" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
+<audio class="correctSfx" src="https://freesound.org/data/previews/170/170664_2437358-lq.mp3" preload="auto"></audio>
+<audio class="correctSfx" src="https://freesound.org/data/previews/320/320655_5260873-lq.mp3" preload="auto"></audio>
+<audio class="correctSfx" src="https://freesound.org/data/previews/109/109662_945474-lq.mp3" preload="auto"></audio>
+<audio id="celebrationSound" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3" preload="auto"></audio>
 
 <script>
-// ====== STARS ======
-const starsContainer = document.getElementById('stars');
+/* ===== STARS ===== */
+const starsContainer=document.getElementById('stars');
 for(let i=0;i<120;i++){
-  const star = document.createElement('div');
-  star.classList.add('star');
-  star.style.left = Math.random()*100 + "vw";
-  star.style.top = Math.random()*100 + "vh";
-  const s = (Math.random()*2+1);
-  star.style.width = star.style.height = s + "px";
-  star.style.animationDuration = (5 + Math.random()*5) + "s, " + (8 + Math.random()*10) + "s";
+  const star=document.createElement('div'); star.classList.add('star');
+  star.style.left=Math.random()*100+'vw';
+  star.style.top=Math.random()*100+'vh';
+  const s=1+Math.random()*2; star.style.width=star.style.height=s+'px';
+  star.style.animationDuration=(5+Math.random()*5)+'s,'+(8+Math.random()*10)+'s';
   starsContainer.appendChild(star);
 }
 
-// ====== ELEMENTS ======
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const countdownEl = document.getElementById('countdown');
-const questionEl = document.getElementById('question');
-const answerEl = document.getElementById('answer');
-const feedbackEl = document.getElementById('feedback');
-const scoreEl = document.getElementById('score');
-const beat = document.getElementById('beat');
-const celebrationSound = document.getElementById('celebrationSound');
-const confettiContainer = document.getElementById('confetti');
-const celebrationText = document.getElementById('celebration-text');
-const themeSelect = document.getElementById('themeSelect');
-const streakBar = document.getElementById('streakBar');
-const streakLabel = document.getElementById('streakLabel');
-const correctSfx = Array.from(document.querySelectorAll('.correctSfx'));
+/* ===== ELEMENTS ===== */
+const startBtn=document.getElementById('startBtn');
+const stopBtn=document.getElementById('stopBtn');
+const countdownEl=document.getElementById('countdown');
+const questionEl=document.getElementById('question');
+const answerEl=document.getElementById('answer');
+const feedbackEl=document.getElementById('feedback');
+const scoreEl=document.getElementById('score');
+const beat=document.getElementById('beat');
+const celebrationSound=document.getElementById('celebrationSound');
+const confettiContainer=document.getElementById('confetti');
+const celebrationText=document.getElementById('celebration-text');
+const themeSelect=document.getElementById('themeSelect');
+const streakBar=document.getElementById('streakBar');
+const streakLabel=document.getElementById('streakLabel');
+const correctSfx=Array.from(document.querySelectorAll('.correctSfx'));
 
-// ====== GAME STATE ======
-let num1,num2,correctAnswer,score=0,streak=0,feedbackTimeout;
-const messages = ["Way to go!","Almost there!","Keep going!","You can do this, Ethan!"];
+/* ===== GAME STATE ===== */
+let num1,num2,correctAnswer,score=0,feedbackTimeout,streak=0;
+const messages=["Way to go!","Almost there!","Keep going!","You can do this, Ethan!"];
 
-// ====== THEME ======
+/* ===== THEME SWITCHER ===== */
 function applyTheme(theme){
   document.body.classList.remove('theme-space','theme-underwater','theme-neon');
   document.body.classList.add(`theme-${theme}`);
-  localStorage.setItem('bm-theme', theme);
+  localStorage.setItem('bm-theme',theme);
 }
-themeSelect.addEventListener('change', e => applyTheme(e.target.value));
-const savedTheme = localStorage.getItem('bm-theme') || 'space';
-themeSelect.value = savedTheme; applyTheme(savedTheme);
+themeSelect.addEventListener('change', e=>applyTheme(e.target.value));
+const savedTheme=localStorage.getItem('bm-theme')||'space';
+themeSelect.value=savedTheme; applyTheme(savedTheme);
 
-// ====== BACKGROUND CANVAS ======
-const bg = document.getElementById('bgTable');
-const ctx = bg.getContext('2d');
+/* ===== BG MULT TABLE ===== */
+const bg=document.getElementById('bgTable');
+const ctx=bg.getContext('2d');
 let W=bg.width=window.innerWidth, H=bg.height=window.innerHeight;
 window.addEventListener('resize', ()=>{ W=bg.width=window.innerWidth; H=bg.height=window.innerHeight; initFloaters(); });
 
 const floaters=[];
 function initFloaters(){
   floaters.length=0;
-  const count = Math.floor((W*H)/55000);
+  const count=Math.floor((W*H)/55000);
   for(let i=0;i<count;i++){
     floaters.push({
-      x: Math.random()*W,
-      y: Math.random()*H,
-      vy: 0.2 + Math.random()*0.6,
-      text: `${1+Math.floor(Math.random()*12)}×${1+Math.floor(Math.random()*12)}`,
-      size: 14 + Math.random()*24,
-      alpha: 0.04 + Math.random()*0.07,
-      rot: (Math.random()*0.6 - 0.3)
+      x:Math.random()*W, y:Math.random()*H,
+      vy:0.2+Math.random()*0.6,
+      text:`${1+Math.floor(Math.random()*12)}×${1+Math.floor(Math.random()*12)}`,
+      size:14+Math.random()*24, alpha:0.04+Math.random()*0.07,
+      rot:(Math.random()*0.6-0.3)
     });
   }
 }
 function drawBG(){
   ctx.clearRect(0,0,W,H);
   for(const f of floaters){
-    ctx.save();
-    ctx.translate(f.x, f.y);
-    ctx.rotate(f.rot);
-    ctx.globalAlpha = f.alpha;
-    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--star').trim() || '#fff';
-    ctx.font = `bold ${f.size}px Arial`;
-    ctx.fillText(f.text, 0, 0);
+    ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(f.rot);
+    ctx.globalAlpha=f.alpha;
+    ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--star').trim()||'#fff';
+    ctx.font=`bold ${f.size}px Arial`; ctx.fillText(f.text,0,0);
     ctx.restore();
-    f.y -= f.vy;
-    if(f.y < -30){ f.y = H+30; f.x = Math.random()*W; f.text = `${1+Math.floor(Math.random()*12)}×${1+Math.floor(Math.random()*12)}`; }
+    f.y-=f.vy;
+    if(f.y<-30){ f.y=H+30; f.x=Math.random()*W; f.text=`${1+Math.floor(Math.random()*12)}×${1+Math.floor(Math.random()*12)}`;}
   }
   requestAnimationFrame(drawBG);
 }
 initFloaters(); drawBG();
 
-// ====== PARTICLES ======
-let lastParticleTime = 0;
-window.addEventListener('mousemove', (e)=>{
-  const now = performance.now();
-  if(now - lastParticleTime < 18) return;
-  lastParticleTime = now;
-  const p = document.createElement('div');
-  p.className = 'particle';
-  p.style.left = (e.clientX - 4) + 'px';
-  p.style.top  = (e.clientY - 4) + 'px';
+/* ===== PARTICLE TRAILS ===== */
+let lastParticleTime=0;
+window.addEventListener('mousemove',(e)=>{
+  const now=performance.now();
+  if(now-lastParticleTime<18)return; lastParticleTime=now;
+  const p=document.createElement('div'); p.className='particle';
+  p.style.left=(e.clientX-4)+'px'; p.style.top=(e.clientY-4)+'px';
   document.body.appendChild(p);
-  setTimeout(()=> p.remove(), 700);
+  setTimeout(()=>p.remove(),700);
 });
 
-// ====== CONFETTI ======
+/* ===== CONFETTI ===== */
 function celebrateConfetti(count=150){
   const colors=['#f94144','#f3722c','#f9c74f','#90be6d','#577590','#43aa8b','#f9844a'];
   for(let i=0;i<count;i++){
-    const c=document.createElement('div');
-    c.classList.add('confetti-piece');
+    const c=document.createElement('div'); c.classList.add('confetti-piece');
     c.style.backgroundColor=colors[Math.floor(Math.random()*colors.length)];
     c.style.left=Math.random()*window.innerWidth+'px';
     c.style.top='-10px';
@@ -270,76 +273,46 @@ function celebrateConfetti(count=150){
     c.style.opacity=Math.random()*0.9+0.1;
     c.style.transform=`rotate(${Math.random()*360}deg)`;
     confettiContainer.appendChild(c);
-    const fallDuration = 3000 + Math.random()*2000;
+    const fallDuration=3000+Math.random()*2000;
     c.animate(
-      [{transform: c.style.transform+' translateY(0)',opacity:1},
-       {transform: c.style.transform+` translateY(${window.innerHeight+20}px)`,opacity:0}],
+      [{transform:c.style.transform+' translateY(0)',opacity:1},
+       {transform:c.style.transform+` translateY(${window.innerHeight+20}px)`,opacity:0}],
       {duration:fallDuration,easing:'ease-out',fill:'forwards'}
     );
     setTimeout(()=>{c.remove();},fallDuration);
   }
 }
 
-// ====== GAME LOGIC ======
+/* ===== QUESTION GENERATION ===== */
 function generateQuestion(){
   num1=Math.floor(Math.random()*12)+1;
   num2=Math.floor(Math.random()*12)+1;
   correctAnswer=num1*num2;
   questionEl.textContent=`${num1} × ${num2} = ?`;
-  answerEl.value='';
-  feedbackEl.textContent='';
-  feedbackEl.className='feedback';
+  answerEl.value=''; feedbackEl.textContent=''; feedbackEl.className='feedback';
   answerEl.focus();
 }
+
+/* ===== STREAK UI ===== */
 function updateStreakUI(){
-  const goal = 20;
-  const pct = Math.min(100, (streak/goal)*100);
-  streakBar.style.width = pct + '%';
-  streakLabel.textContent = `Streak: ${streak}`;
-}
-function handleAnswer(){
-  const val=parseInt(answerEl.value);
-  if(isNaN(val)) return;
-  if(val===correctAnswer){
-    feedbackEl.textContent='✅ Correct!';
-    feedbackEl.className='feedback correct pop-bounce';
-    score++; streak++;
-    updateStreakUI();
-    scoreEl.textContent=`Score: ${score}`;
-    correctSfx[Math.floor(Math.random()*correctSfx.length)].play();
-
-    // Fireworks on streak every 10
-    if(streak>0 && streak%10===0) celebrateConfetti(50);
-
-    // 50-point celebration
-    if(score===50){
-      celebrationText.style.display='block';
-      celebrationSound.play();
-      celebrateConfetti(200);
-      setTimeout(()=>celebrationText.style.display='none',3500);
-    }
-
-    generateQuestion();
-  }else{
-    feedbackEl.textContent=`❌ Wrong (Ans: ${correctAnswer})`;
-    feedbackEl.className='feedback wrong';
-    streak=0; updateStreakUI();
-    score=Math.max(0,score-1);
-    generateQuestion();
-  }
+  const goal=20;
+  const pct=Math.min(100,(streak/goal)*100);
+  streakBar.style.width=pct+'%';
+  streakBar.style.filter=`hue-rotate(${Math.min(180,streak*8)}deg) brightness(${1+Math.min(1,streak/20)})`;
+  streakLabel.textContent=`Streak: ${streak}`;
 }
 
-// ====== EVENTS ======
-answerEl.addEventListener('keydown', e=>{ if(e.key==='Enter') handleAnswer(); });
-startBtn.addEventListener('click', ()=>{
-  document.getElementById('startScreen').style.display='none';
-  questionEl.style.display='block'; answerEl.style.display='block'; scoreEl.style.display='block';
-  beat.play();
-  generateQuestion();
-});
-stopBtn.addEventListener('click',()=>{ beat.pause(); beat.currentTime=0; });
-window.addEventListener('pointerdown', ()=> { if(answerEl.style.display==='block') answerEl.focus(); });
+/* ===== MUSIC TEMPO ===== */
+function updatePlaybackRate(){
+  const target=Math.min(1.5,1+score*0.01);
+  beat.playbackRate=target;
+}
 
-</script>
-</body>
-</html>
+/* ===== VOICE ENCOURAGEMENT ===== */
+const encouragements=["Great job!","Keep it up!","You're on fire!","Amazing focus!","Math master!"];
+function speakEncouragement(){
+  if(!('speechSynthesis' in window))return;
+  const phrase=encouragements[Math.floor(Math.random()*encouragements.length)];
+  const u=new SpeechSynthesisUtterance(phrase);
+  u.rate=1.1; u.pitch=1; u.volume=0.9;
+  speechSynthesis.cancel(); speech
