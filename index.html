@@ -121,10 +121,17 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
   display:none; z-index:10000; animation: flashText .5s alternate 10;
 }
 @keyframes flashText{0%{opacity:0}100%{opacity:1}}
+
+/* Fireworks Canvas */
+#fireworksCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
 </style>
 </head>
 <body class="theme-space">
-<!-- THEME / CONTROLS -->
 <div id="uiTop" aria-label="Game controls">
   <div style="display:flex; gap:10px; align-items:center;">
     <button id="startBtn" aria-label="Start game">Start Game</button>
@@ -140,13 +147,9 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
   </label>
 </div>
 
-<!-- BG canvas for multiplication table -->
 <canvas id="bgTable"></canvas>
-
-<!-- Stars layer -->
 <div id="stars" aria-hidden="true"></div>
 
-<!-- Start & Game UI -->
 <div id="startScreen">
   <div id="countdown" style="display:none;"></div>
 </div>
@@ -156,26 +159,25 @@ select{ background:#3a3a3a; box-shadow:0 0 10px #00000055 }
 <div class="feedback" id="feedback" aria-live="polite"></div>
 <div class="score" id="score" style="display:none;">Score: 0</div>
 
-<!-- Streak meter -->
 <div id="streakWrap" aria-hidden="false" title="Answer streak">
   <div id="streakBar"></div>
   <div id="streakLabel">Streak: 0</div>
 </div>
 
-<!-- Effects -->
 <div id="confetti" aria-hidden="true"></div>
 <div id="celebration-text">YOU DID IT!</div>
 
-<!-- Audio -->
 <audio id="beat" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop hidden></audio>
 
-<!-- Alternate correct sounds -->
 <audio class="correctSfx" src="https://freesound.org/data/previews/170/170664_2437358-lq.mp3" preload="auto"></audio>
 <audio class="correctSfx" src="https://freesound.org/data/previews/320/320655_5260873-lq.mp3" preload="auto"></audio>
 <audio class="correctSfx" src="https://freesound.org/data/previews/109/109662_945474-lq.mp3" preload="auto"></audio>
 
-<!-- Celebration sound (still used at 50 points) -->
-<audio id="celebrationSound" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3" preload="auto"></audio>
+<!-- New positive celebration tone -->
+<audio id="celebrationSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_3f6325e659.mp3?filename=success-fanfare-trumpets-6185.mp3" preload="auto"></audio>
+
+<!-- Fireworks canvas -->
+<canvas id="fireworksCanvas"></canvas>
 
 <script>
 /* ====== STARS ====== */
@@ -187,7 +189,7 @@ for(let i=0;i<120;i++){
   star.style.top = Math.random()*100 + "vh";
   const s = (Math.random()*2+1);
   star.style.width = star.style.height = s + "px";
-  star.style.animationDuration = (5 + Math.random()*5) + "s, " + (8 + Math.random()*10) + "s"; // twinkle, drift
+  star.style.animationDuration = (5 + Math.random()*5) + "s, " + (8 + Math.random()*10) + "s";
   starsContainer.appendChild(star);
 }
 
@@ -231,7 +233,7 @@ window.addEventListener('resize', ()=>{ W=bg.width=window.innerWidth; H=bg.heigh
 const floaters=[];
 function initFloaters(){
   floaters.length=0;
-  const count = Math.floor((W*H)/55000); // density
+  const count = Math.floor((W*H)/55000);
   for(let i=0;i<count;i++){
     floaters.push({
       x: Math.random()*W,
@@ -266,7 +268,7 @@ initFloaters(); drawBG();
 let lastParticleTime = 0;
 window.addEventListener('mousemove', (e)=>{
   const now = performance.now();
-  if(now - lastParticleTime < 18) return; // throttle
+  if(now - lastParticleTime < 18) return;
   lastParticleTime = now;
   const p = document.createElement('div');
   p.className = 'particle';
@@ -300,160 +302,28 @@ function celebrateConfetti(count=150){
   }
 }
 
-/* ====== QUESTION GENERATION ====== */
-function generateQuestion(){
-  num1=Math.floor(Math.random()*12)+1;
-  num2=Math.floor(Math.random()*12)+1;
-  correctAnswer=num1*num2;
-  questionEl.textContent=`${num1} × ${num2} = ?`;
-  answerEl.value='';
-  feedbackEl.textContent='';
-  feedbackEl.className='feedback';
-  answerEl.focus();
-}
-
-/* ====== STREAK / SCORE UI ====== */
-function updateStreakUI(){
-  const goal = 20; // visualize up to 20-in-a-row; cap at 100%
-  const pct = Math.min(100, (streak/goal)*100);
-  streakBar.style.width = pct + '%';
-  streakBar.style.filter = `hue-rotate(${Math.min(180, streak*8)}deg) brightness(${1 + Math.min(1, streak/20)})`;
-  streakLabel.textContent = `Streak: ${streak}`;
-}
-
-/* ====== MUSIC TEMPO (Pitch Shift) ====== */
-function updatePlaybackRate(){
-  // base 1.0 + scale with score, clamped; slower on wrong is applied ad-hoc then restored here
-  const target = Math.min(1.5, 1 + score*0.01);
-  beat.playbackRate = target;
-}
-
-/* ====== VOICE ENCOURAGEMENT ====== */
-const encouragements = [
-  "Great job!",
-  "Keep it up!",
-  "You're on fire!",
-  "Amazing focus!",
-  "Math master!"
-];
-function speakEncouragement(){
-  if(!('speechSynthesis' in window)) return;
-  const phrase = encouragements[Math.floor(Math.random()*encouragements.length)];
-  const u = new SpeechSynthesisUtterance(phrase);
-  u.rate = 1.1; u.pitch = 1; u.volume = 0.9;
-  speechSynthesis.cancel(); // avoid queueing up
-  speechSynthesis.speak(u);
-}
-
-/* ====== INPUT HANDLER ====== */
-answerEl.addEventListener('keydown',(e)=>{
-  if(e.key==='Enter'){
-    clearTimeout(feedbackTimeout);
-    const userAnswer=parseInt(answerEl.value);
-    if(userAnswer===correctAnswer){
-      // feedback + FX
-      feedbackEl.textContent='✅ Correct!';
-      feedbackEl.className='feedback correct';
-      questionEl.classList.remove('pop-bounce');
-      // trigger pop animation
-      void questionEl.offsetWidth; // reflow to restart animation
-      questionEl.classList.add('pop-bounce');
-
-      score++;
-      streak++;
-      document.body.classList.remove('flash-wrong');
-      document.body.classList.add('flash-correct');
-
-      // Alternate correct sfx
-      const sfx = correctSfx[Math.floor(Math.random()*correctSfx.length)];
-      try { sfx.currentTime=0; sfx.play(); } catch{}
-
-      updatePlaybackRate();
-      scoreEl.textContent=`Score: ${score}`;
-      updateStreakUI();
-
-      // Milestones
-      if(score%10===0){
-        const msg=messages[(score/10-1)%messages.length];
-        feedbackEl.textContent=`✅ Correct! ${msg}`;
-      }
-      if(streak>0 && streak%5===0){ speakEncouragement(); }
-
-      if(score===50){
-        celebrationSound.currentTime=0; celebrationSound.play();
-        for(let i=0;i<3;i++){ setTimeout(()=>celebrateConfetti(200), i*700); }
-        celebrationText.style.display='block';
-        setTimeout(()=>{celebrationText.style.display='none';},3500);
-      }
-
-      feedbackTimeout=setTimeout(()=>{
-        document.body.classList.remove('flash-correct');
-        generateQuestion();
-      },1000);
-
-    }else{
-      // wrong
-      feedbackEl.textContent=`❌ Wrong (Ans: ${correctAnswer})`;
-      feedbackEl.className='feedback wrong';
-      score=Math.max(0,score-1);
-      streak = 0;
-      updateStreakUI();
-
-      // briefly slow down music for drama
-      beat.playbackRate = 0.7;
-      setTimeout(updatePlaybackRate, 600);
-
-      document.body.classList.remove('flash-correct');
-      document.body.classList.add('flash-wrong');
-      scoreEl.textContent=`Score: ${score}`;
-
-      feedbackTimeout=setTimeout(()=>{
-        document.body.classList.remove('flash-wrong');
-        generateQuestion();
-      },1500);
-    }
+/* ====== FIREWORKS EFFECT ====== */
+const fwCanvas = document.getElementById("fireworksCanvas");
+const fwCtx = fwCanvas.getContext("2d");
+let fwW = fwCanvas.width = window.innerWidth;
+let fwH = fwCanvas.height = window.innerHeight;
+window.addEventListener("resize", () => {
+  fwW = fwCanvas.width = window.innerWidth;
+  fwH = fwCanvas.height = window.innerHeight;
+});
+const fireworks = [];
+function createFirework(x, y) {
+  const colors = ["#ff3", "#f0f", "#0ff", "#f33", "#3f3"];
+  for (let i = 0; i < 50; i++) {
+    fireworks.push({
+      x, y,
+      angle: Math.random() * Math.PI * 2,
+      speed: Math.random() * 4 + 2,
+      alpha: 1,
+      decay: Math.random() * 0.015 + 0.01,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    });
   }
-});
-
-/* ====== COUNTDOWN ====== */
-function startCountdown(seconds,onComplete){
-  countdownEl.style.display='block';
-  let counter=seconds;
-  countdownEl.textContent=counter;
-  const interval=setInterval(()=>{
-    counter--;
-    if(counter>0){countdownEl.textContent=counter;}
-    else{
-      countdownEl.textContent='Go!';
-      clearInterval(interval);
-      setTimeout(()=>{countdownEl.style.display='none'; onComplete();},800);
-    }
-  },1000);
 }
-
-/* ====== START / STOP ====== */
-startBtn.addEventListener('click', async ()=>{
-  try { await beat.play(); } catch(e) { /* user gesture may be needed; startBtn is a gesture */ }
-  startBtn.disabled=true; stopBtn.disabled=false;
-  score=0; streak=0; updateStreakUI(); updatePlaybackRate();
-  scoreEl.textContent='Score: 0';
-
-  startCountdown(3,()=>{
-    document.getElementById('startScreen').style.display='none';
-    questionEl.style.display='block';
-    answerEl.style.display='block';
-    scoreEl.style.display='block';
-    generateQuestion();
-    answerEl.focus();
-  });
-});
-stopBtn.addEventListener('click',()=>{ beat.pause(); beat.currentTime=0; });
-
-/* ====== ACCESSIBILITY: focus answer on click anywhere ====== */
-window.addEventListener('pointerdown', ()=> { if(answerEl.style.display!=='none') answerEl.focus(); });
-
-/* ====== INIT ====== */
-updateStreakUI();
-</script>
-</body>
-</html>
+function updateFireworks() {
+  fwCtx.clearRect(0, 0, fw
