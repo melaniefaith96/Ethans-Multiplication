@@ -181,7 +181,7 @@
   <div id="startScreen">
     <div id="buttonContainer">
       <button id="startBtn">Start Game</button>
-      <button id="stopBtn" disabled>Stop Music</button>
+      <button id="stopBtn">Stop Music</button>
     </div>
     <div id="countdown" style="display:none;"></div>
   </div>
@@ -193,7 +193,7 @@
 
   <div id="confetti"></div>
 
-  <audio id="beat" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop hidden></audio>
+  <audio id="beat" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
   <audio id="correctSound" src="https://freesound.org/data/previews/170/170664_2437358-lq.mp3" preload="auto"></audio>
   
   <script>
@@ -213,7 +213,6 @@
 
     let num1, num2, correctAnswer, score = 0;
     let feedbackTimeout;
-    let confettiTimeout;
 
     function generateQuestion() {
       num1 = Math.floor(Math.random() * 12) + 1;
@@ -226,7 +225,6 @@
       answerEl.focus();
     }
 
-    // Confetti animation function
     function celebrateConfetti() {
       const colors = ['#f94144', '#f3722c', '#f9c74f', '#90be6d', '#577590', '#43aa8b', '#f9844a'];
       const count = 150;
@@ -243,17 +241,13 @@
         confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
         confettiContainer.appendChild(confetti);
 
-        // Animate falling
         const fallDuration = 3000 + Math.random() * 2000;
         confetti.animate([
           { transform: confetti.style.transform + ' translateY(0)' , opacity: 1 },
           { transform: confetti.style.transform + ` translateY(${window.innerHeight + 20}px)` , opacity: 0 }
         ], { duration: fallDuration, easing: 'ease-out', fill: 'forwards' });
 
-        // Remove confetti after animation
-        setTimeout(() => {
-          confetti.remove();
-        }, fallDuration);
+        setTimeout(() => confetti.remove(), fallDuration);
       }
     }
 
@@ -265,16 +259,14 @@
           feedbackEl.textContent = '✅ Correct!';
           feedbackEl.className = 'feedback correct';
           score++;
-          beat.playbackRate = 1; // reset speed
+          beat.playbackRate = 1;
           document.body.classList.remove('flash-wrong');
           document.body.classList.add('flash-correct');
           correctSound.currentTime = 0;
           correctSound.play();
           scoreEl.textContent = `Score: ${score}`;
 
-          if (score === 50) {
-            celebrateConfetti();
-          }
+          if (score === 50) celebrateConfetti();
 
           feedbackTimeout = setTimeout(() => {
             document.body.classList.remove('flash-correct');
@@ -284,10 +276,9 @@
           feedbackEl.textContent = `❌ Wrong (Ans: ${correctAnswer})`;
           feedbackEl.className = 'feedback wrong';
           score = Math.max(0, score - 1);
-          beat.playbackRate = 0.6; // slow down music
+          beat.playbackRate = 0.6;
           document.body.classList.remove('flash-correct');
           document.body.classList.add('flash-wrong');
-          // No buzzer sound on wrong answer as requested
           scoreEl.textContent = `Score: ${score}`;
           feedbackTimeout = setTimeout(() => {
             document.body.classList.remove('flash-wrong');
@@ -301,12 +292,10 @@
       countdownEl.style.display = 'block';
       let counter = seconds;
       countdownEl.textContent = counter;
-
       const interval = setInterval(() => {
         counter--;
-        if (counter > 0) {
-          countdownEl.textContent = counter;
-        } else {
+        if (counter > 0) countdownEl.textContent = counter;
+        else {
           countdownEl.textContent = 'Go!';
           clearInterval(interval);
           setTimeout(() => {
@@ -318,8 +307,6 @@
     }
 
     startBtn.addEventListener('click', () => {
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
       beat.play();
       startCountdown(3, () => {
         startScreen.style.display = 'none';
@@ -333,8 +320,6 @@
     stopBtn.addEventListener('click', () => {
       beat.pause();
       beat.currentTime = 0;
-      stopBtn.disabled = true;
-      startBtn.disabled = false;
     });
   </script>
 </body>
